@@ -179,12 +179,12 @@ async function updateBalance() {
 
 async function updateGameState() {
     try {
-        console.log("🏦 Checking vault wallet for pot size...");
-        console.log("🏦 Vault wallet:", VAULT_WALLET.toString());
+        console.log("🏦 Checking vault PDA for pot size...");
+        console.log("🏦 Vault Authority PDA:", vaultAuthorityPDA.toString());
         
         // Get vault token account to check balance (pot size)
         const vaultTokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            VAULT_WALLET,
+            vaultAuthorityPDA,
             { mint: FLIP_MINT }
         );
         
@@ -255,7 +255,7 @@ async function executeRealFlip(wager) {
         
         // Get vault token account
         const vaultTokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            VAULT_WALLET,
+            vaultAuthorityPDA,
             { mint: FLIP_MINT }
         );
         
@@ -434,7 +434,7 @@ async function debugTokenAccounts() {
         console.log("=== 🔍 COMPREHENSIVE DEBUG (Updated) ===");
         console.log("Your wallet:", wallet.publicKey.toString());
         console.log("Token mint:", FLIP_MINT.toString());
-        console.log("Vault wallet:", VAULT_WALLET.toString());
+        console.log("Vault Authority PDA:", vaultAuthorityPDA.toString());
         console.log("RPC endpoint:", RPC_ENDPOINTS[currentRpcIndex]);
         
         // First, let's see ALL tokens you have
@@ -486,15 +486,15 @@ async function debugTokenAccounts() {
             console.error("Token mint check failed:", error);
         }
         
-        // Check vault wallet tokens
-        console.log("\n--- VAULT WALLET CHECK ---");
+        // Check vault PDA tokens
+        console.log("\n--- VAULT PDA CHECK ---");
         try {
             const vaultTokens = await connection.getParsedTokenAccountsByOwner(
-                VAULT_WALLET,
+                vaultAuthorityPDA,
                 { programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
             );
             
-            console.log(`Found ${vaultTokens.value.length} token accounts in vault wallet:`);
+            console.log(`Found ${vaultTokens.value.length} token accounts in vault PDA:`);
             vaultTokens.value.forEach((account, i) => {
                 const data = account.account.data.parsed.info;
                 console.log(`${i + 1}. Mint: ${data.mint}, Balance: ${data.tokenAmount.uiAmount}`);
