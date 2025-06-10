@@ -6,8 +6,9 @@ let wallet;
 let gameState;
 const flipHistory = [];
 
-// RPC endpoint with your Helius API key
-const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=99b7e94e-9dff-4de3-82ac-567bfbda369c";
+// RPC endpoint with your Helius API key from config
+const HELIUS_API_KEY = window.CONFIG?.HELIUS_API_KEY || "99b7e94e-9dff-4de3-82ac-567bfbda369c";
+const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 
 // Multiple RPC endpoints with fallback
 const RPC_ENDPOINTS = [
