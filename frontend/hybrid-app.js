@@ -299,7 +299,7 @@ async function debugTokenAccounts() {
     if (!wallet || !wallet.publicKey) return;
     
     try {
-        console.log("=== 🔍 COMPREHENSIVE DEBUG ===");
+        console.log("=== 🔍 COMPREHENSIVE DEBUG (Updated) ===");
         console.log("Your wallet:", wallet.publicKey.toString());
         console.log("Token mint:", FLIP_MINT.toString());
         console.log("Vault wallet:", VAULT_WALLET.toString());
