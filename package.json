@@ -1,0 +1,36 @@
+{
+  "name": "flip-game",
+  "version": "1.0.0",
+  "description": "50/50 gambling game with FLIP tokens on Solana",
+  "main": "index.js",
+  "scripts": {
+    "build": "anchor build",
+    "test": "anchor test",
+    "deploy": "anchor deploy",
+    "deploy:devnet": "anchor deploy --provider.cluster devnet",
+    "deploy:mainnet": "anchor deploy --provider.cluster mainnet",
+    "localnet": "solana-test-validator",
+    "logs": "solana logs",
+    "serve": "http-server frontend -p 8080 -c-1",
+    "setup": "node scripts/deploy.js"
+  },
+  "keywords": [
+    "solana",
+    "anchor",
+    "gambling",
+    "defi",
+    "rust"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/spl-token": "^0.3.9",
+    "http-server": "^14.1.1",
+    "chai": "^4.3.7",
+    "mocha": "^10.2.0"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.87.6"
+  }
+}

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$FLIP - 50/50 Gambling Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>💰 $FLIP 💰</h1>
+            <p>50/50 chance to double your money\!</p>
+        </header>
+
+        <div id="wallet-section">
+            <button id="connect-wallet" class="btn primary">Connect Wallet</button>
+            <div id="wallet-info" style="display: none;">
+                <p>Connected: <span id="wallet-address"></span></p>
+                <p>Balance: <span id="flip-balance">0</span> FLIP</p>
+            </div>
+        </div>
+
+        <div id="game-section" style="display: none;">
+            <div class="pot-display">
+                <h2>Current Pot: <span id="pot-size">0</span> FLIP</h2>
+            </div>
+
+            <div class="flip-controls">
+                <label for="wager-input">Wager Amount:</label>
+                <input type="number" id="wager-input" placeholder="Enter FLIP amount" min="1">
+                <button id="flip-btn" class="btn flip-btn">🎲 FLIP 🎲</button>
+            </div>
+
+            <div id="result-display" class="result-hidden">
+                <div id="result-content"></div>
+            </div>
+        </div>
+
+        <div id="history-section">
+            <h3>Recent Flips</h3>
+            <div id="flip-history"></div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@coral-xyz/anchor@0.29.0/dist/browser.bundle.js"></script>
+    <script src="contract.js"></script>
+    <script src="hybrid-app.js"></script>
+</body>
+</html>
