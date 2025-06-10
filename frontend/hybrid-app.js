@@ -6,12 +6,15 @@ let wallet;
 let gameState;
 const flipHistory = [];
 
+// RPC endpoint with your Helius API key
+const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=99b7e94e-9dff-4de3-82ac-567bfbda369c";
+
 // Multiple RPC endpoints with fallback
 const RPC_ENDPOINTS = [
+    HELIUS_RPC,
     "https://rpc.ankr.com/solana",
     "https://solana-api.projectserum.com", 
-    "https://api.mainnet-beta.solana.com",
-    "https://solana.publicnode.com"
+    "https://api.mainnet-beta.solana.com"
 ];
 
 let currentRpcIndex = 0;
