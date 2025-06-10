@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-declare_id!("Fg7VmsCYRxb3zfJSpJwtCkb3dQaQv8qR4pR5m4g1Kjv");
+declare_id!("CaF34a7uKZzVpBmmQMH2RLtq5Sj2sJSgLUnZcNRDt9P1");
 
 #[program]
 pub mod flip_game {

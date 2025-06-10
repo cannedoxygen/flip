@@ -1,4 +1,4 @@
-const PROGRAM_ID = new solanaWeb3.PublicKey("Fg7VmsCYRxb3zfJSpJwtCkb3dQaQv8qR4pR5m4g1Kjv");
+const PROGRAM_ID = new solanaWeb3.PublicKey("CaF34a7uKZzVpBmmQMH2RLtq5Sj2sJSgLUnZcNRDt9P1");
 
 const IDL = {
   "version": "0.1.0",
@@ -73,8 +73,8 @@ const IDL = {
   ]
 };
 
-// FLIP token mint (real devnet token)
-const FLIP_MINT = new solanaWeb3.PublicKey("88KKUzT9B5sHRopVgRNn3VEfKh7g4ykLXqqjPT7Hpump");
+// TEST token mint (devnet test token)
+const FLIP_MINT = new solanaWeb3.PublicKey("BPfsR1jUCR2oVrtd2xDLoqb8bvkGWmNAE4rW7ffAA6Aj");
 
 // Derive PDAs
 const [gameStatePDA] = solanaWeb3.PublicKey.findProgramAddressSync(
