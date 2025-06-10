@@ -37,17 +37,21 @@ async function createConnection() {
     throw new Error("All RPC endpoints failed");
 }
 
-// Initialize connection
-createConnection().catch(console.error);
-
 async function init() {
     setupEventListeners();
+    // Initialize RPC connection
+    try {
+        await createConnection();
+    } catch (error) {
+        console.error("Failed to connect to any RPC:", error);
+    }
     await checkWalletConnection();
     updateDisplay();
 }
 
 function setupEventListeners() {
     document.getElementById("connect-wallet").addEventListener("click", connectWallet);
+    document.getElementById("disconnect-wallet").addEventListener("click", disconnectWallet);
     document.getElementById("flip-btn").addEventListener("click", executeFlip);
     
     // Auto-refresh every 30 seconds (to avoid rate limits)
@@ -64,6 +68,7 @@ async function connectWallet() {
             
             // Update UI
             document.getElementById("connect-wallet").style.display = "none";
+            document.getElementById("disconnect-wallet").style.display = "inline-block";
             document.getElementById("wallet-info").style.display = "block";
             document.getElementById("game-section").style.display = "block";
             document.getElementById("wallet-address").textContent = 
@@ -85,6 +90,30 @@ async function connectWallet() {
     } catch (error) {
         console.error("Wallet connection failed:", error);
         alert("Failed to connect wallet: " + error.message);
+    }
+}
+
+async function disconnectWallet() {
+    try {
+        if (wallet && wallet.disconnect) {
+            await wallet.disconnect();
+        }
+        
+        // Reset wallet state
+        wallet = null;
+        
+        // Update UI
+        document.getElementById("connect-wallet").style.display = "inline-block";
+        document.getElementById("disconnect-wallet").style.display = "none";
+        document.getElementById("wallet-info").style.display = "none";
+        document.getElementById("game-section").style.display = "none";
+        
+        // Reset display
+        updateDisplay();
+        
+        console.log("Wallet disconnected");
+    } catch (error) {
+        console.error("Disconnect failed:", error);
     }
 }
 
