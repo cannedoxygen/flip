@@ -6,9 +6,39 @@ let wallet;
 let gameState;
 const flipHistory = [];
 
-// Connect to Solana mainnet with free public RPC
-const NETWORK = "https://api.mainnet-beta.solana.com"; // Solana's official public endpoint
-connection = new solanaWeb3.Connection(NETWORK, "confirmed");
+// Multiple RPC endpoints with fallback
+const RPC_ENDPOINTS = [
+    "https://solana-api.projectserum.com",
+    "https://api.mainnet-beta.solana.com", 
+    "https://solana-mainnet.rpc.extrnode.com",
+    "https://mainnet.rpcpool.com"
+];
+
+let connection;
+let currentRpcIndex = 0;
+
+// Try different RPCs if one fails
+async function createConnection() {
+    for (let i = 0; i < RPC_ENDPOINTS.length; i++) {
+        try {
+            const rpc = RPC_ENDPOINTS[currentRpcIndex];
+            console.log(`🔄 Trying RPC: ${rpc}`);
+            connection = new solanaWeb3.Connection(rpc, "confirmed");
+            
+            // Test the connection
+            await connection.getLatestBlockhash();
+            console.log(`✅ Connected to: ${rpc}`);
+            return;
+        } catch (error) {
+            console.log(`❌ Failed RPC: ${RPC_ENDPOINTS[currentRpcIndex]} - ${error.message}`);
+            currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
+        }
+    }
+    throw new Error("All RPC endpoints failed");
+}
+
+// Initialize connection
+createConnection().catch(console.error);
 
 async function init() {
     setupEventListeners();
@@ -303,7 +333,7 @@ async function debugTokenAccounts() {
         console.log("Your wallet:", wallet.publicKey.toString());
         console.log("Token mint:", FLIP_MINT.toString());
         console.log("Vault wallet:", VAULT_WALLET.toString());
-        console.log("RPC endpoint:", NETWORK);
+        console.log("RPC endpoint:", RPC_ENDPOINTS[currentRpcIndex]);
         
         // First, let's see ALL tokens you have
         console.log("\n--- ALL YOUR TOKENS ---");
