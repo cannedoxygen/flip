@@ -70,8 +70,7 @@ async function connectWallet() {
                 response.publicKey.toString().slice(0, 6) + "..." + 
                 response.publicKey.toString().slice(-4);
             
-            // Initialize real mode (without Anchor for now)
-            showRealModeNotice();
+            // Real mode - no demo notice needed
             
             await updateBalance();
             await updateGameState();
@@ -102,32 +101,7 @@ async function checkWalletConnection() {
     }
 }
 
-function showRealModeNotice() {
-    const notice = document.createElement("div");
-    notice.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: rgba(0, 255, 136, 0.9);
-        color: black;
-        padding: 15px;
-        border-radius: 8px;
-        z-index: 1000;
-        max-width: 300px;
-        font-weight: bold;
-    `;
-    notice.innerHTML = `
-        <strong>🚀 REAL MODE</strong><br>
-        Connected to live Solana program!<br>
-        Connected to mainnet with real tokens!<br>
-        Token: ${FLIP_MINT.toString().slice(0,8)}...${FLIP_MINT.toString().slice(-4)}
-    `;
-    document.body.appendChild(notice);
-    
-    setTimeout(() => {
-        notice.remove();
-    }, 8000);
-}
+// Removed showRealModeNotice function
 
 
 async function updateBalance() {
