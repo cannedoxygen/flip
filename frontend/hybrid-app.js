@@ -140,7 +140,8 @@ async function updateBalance() {
         }
         
         console.log("🔍 Checking balance for wallet:", wallet.publicKey.toString());
-        console.log("🪙 Looking for token:", FLIP_MINT.toString());
+        console.log("🪙 Looking for exact token:", FLIP_MINT.toString());
+        console.log("🪙 Token bytes check:", FLIP_MINT.toString() === "88KKUzT9B5sHRopVgRNn3VEfKh7g4ykLXqqjPT7Hpump");
         
         // Direct token account lookup for our specific token
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
@@ -148,7 +149,7 @@ async function updateBalance() {
             { mint: FLIP_MINT }
         );
         
-        console.log(`📊 Token accounts found: ${tokenAccounts.value.length}`);
+        console.log(`📊 Token accounts found for ${FLIP_MINT.toString()}: ${tokenAccounts.value.length}`);
         
         let balance = 0;
         if (tokenAccounts.value.length > 0) {
@@ -352,9 +353,12 @@ async function debugTokenAccounts() {
             });
             
             // Check if our specific token is in the list
-            const ourToken = allTokens.value.find(acc => 
-                acc.account.data.parsed.info.mint === FLIP_MINT.toString()
-            );
+            console.log("🔍 Searching for mint:", FLIP_MINT.toString());
+            const ourToken = allTokens.value.find(acc => {
+                const mint = acc.account.data.parsed.info.mint;
+                console.log(`  Comparing: ${mint} === ${FLIP_MINT.toString()} ? ${mint === FLIP_MINT.toString()}`);
+                return mint === FLIP_MINT.toString();
+            });
             
             if (ourToken) {
                 console.log("✅ FOUND OUR TOKEN IN YOUR WALLET!");
