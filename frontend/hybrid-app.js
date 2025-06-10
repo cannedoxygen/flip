@@ -328,8 +328,9 @@ async function executeRealFlip(wager) {
         
         console.log("✅ Wager transaction confirmed!");
         
-        // Force balance refresh after transaction
+        // Force balance refresh after transaction with delay
         console.log("🔄 Refreshing balances...");
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for blockchain to update
         await updateBalance();
         await updateGameState();
         
