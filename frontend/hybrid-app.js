@@ -328,6 +328,11 @@ async function executeRealFlip(wager) {
         
         console.log("✅ Wager transaction confirmed!");
         
+        // Force balance refresh after transaction
+        console.log("🔄 Refreshing balances...");
+        await updateBalance();
+        await updateGameState();
+        
         // Step 2: Determine game outcome
         const won = Math.random() < 0.49; // 49% win rate (2% house edge)
         const netWager = wager * 0.98; // After 2% house cut
@@ -342,7 +347,7 @@ async function executeRealFlip(wager) {
             // This would require the vault wallet to send tokens back
         }
         
-        // Update UI
+        // Final balance refresh
         await updateBalance();
         await updateGameState();
         
