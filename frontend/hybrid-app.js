@@ -235,37 +235,126 @@ async function executeFlip() {
 }
 
 async function executeRealFlip(wager) {
-    // Check if user has tokens
-    const playerTokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        wallet.publicKey,
-        { mint: FLIP_MINT }
-    );
-    
-    if (playerTokenAccounts.value.length === 0) {
-        throw new Error("No token account found for this mint. Please create one first.");
+    try {
+        // Check if user has tokens
+        const playerTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            wallet.publicKey,
+            { mint: FLIP_MINT }
+        );
+        
+        if (playerTokenAccounts.value.length === 0) {
+            throw new Error("No token account found for this mint. Please create one first.");
+        }
+        
+        const playerTokenAccount = playerTokenAccounts.value[0].pubkey;
+        const currentBalance = playerTokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
+        
+        if (currentBalance < wager) {
+            throw new Error("Insufficient token balance!");
+        }
+        
+        // Get vault token account
+        const vaultTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            VAULT_WALLET,
+            { mint: FLIP_MINT }
+        );
+        
+        if (vaultTokenAccounts.value.length === 0) {
+            throw new Error("Vault token account not found!");
+        }
+        
+        const vaultTokenAccount = vaultTokenAccounts.value[0].pubkey;
+        
+        console.log("🎲 Starting real flip transaction...");
+        console.log("💰 Wager:", wager, "tokens");
+        console.log("👤 Player account:", playerTokenAccount.toString());
+        console.log("🏦 Vault account:", vaultTokenAccount.toString());
+        
+        // Get token info to determine decimals
+        const tokenInfo = playerTokenAccounts.value[0].account.data.parsed.info;
+        const decimals = tokenInfo.tokenAmount.decimals;
+        
+        // Calculate amounts (convert to smallest units with proper decimals)
+        const wagerLamports = Math.floor(wager * Math.pow(10, decimals));
+        
+        console.log("🔢 Token decimals:", decimals);
+        console.log("🔢 Wager in lamports:", wagerLamports);
+        
+        // Create SPL token transfer instruction using web3.js
+        // We'll use a simplified approach that should work with most wallets
+        const transaction = new solanaWeb3.Transaction();
+        
+        // For now, let's create a simple transaction that the wallet can handle
+        // This is a basic token transfer instruction
+        const keys = [
+            { pubkey: playerTokenAccount, isSigner: false, isWritable: true },    // Source
+            { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },     // Destination  
+            { pubkey: wallet.publicKey, isSigner: true, isWritable: false },      // Owner
+        ];
+        
+        // Create transfer instruction data (browser-compatible)
+        const data = new Uint8Array(9); // 1 byte instruction + 8 bytes amount
+        data[0] = 3; // Transfer instruction = 3
+        
+        // Convert amount to little-endian bytes
+        const amountBytes = new ArrayBuffer(8);
+        const amountView = new DataView(amountBytes);
+        amountView.setBigUint64(0, BigInt(wagerLamports), true); // little-endian = true
+        data.set(new Uint8Array(amountBytes), 1);
+        
+        const transferInstruction = new solanaWeb3.TransactionInstruction({
+            keys,
+            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+            data,
+        });
+        
+        transaction.add(transferInstruction);
+        
+        // Get recent blockhash
+        const { blockhash } = await connection.getLatestBlockhash();
+        transaction.recentBlockhash = blockhash;
+        transaction.feePayer = wallet.publicKey;
+        
+        console.log("📝 Signing transaction...");
+        
+        // Sign and send transaction
+        const signedTransaction = await wallet.signTransaction(transaction);
+        const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+        
+        console.log("⏳ Confirming transaction:", signature);
+        
+        // Wait for confirmation
+        await connection.confirmTransaction(signature, "confirmed");
+        
+        console.log("✅ Wager transaction confirmed!");
+        
+        // Step 2: Determine game outcome
+        const won = Math.random() < 0.49; // 49% win rate (2% house edge)
+        const netWager = wager * 0.98; // After 2% house cut
+        const payout = won ? netWager * 2 : 0;
+        
+        console.log("🎲 Game result:", won ? "WIN!" : "LOSE");
+        
+        if (won) {
+            console.log("🎉 You won!", payout, "tokens");
+            console.log("💡 Payout will be sent from vault (implement payout logic)");
+            // TODO: Implement automatic payout from vault
+            // This would require the vault wallet to send tokens back
+        }
+        
+        // Update UI
+        await updateBalance();
+        await updateGameState();
+        
+        showResult(won, payout);
+        addToHistory(wager, won, payout);
+        
+        return signature;
+        
+    } catch (error) {
+        console.error("❌ Flip transaction failed:", error);
+        throw error;
     }
-    
-    const currentBalance = playerTokenAccounts.value[0].account.data.parsed.info.tokenAmount.uiAmount;
-    if (currentBalance < wager) {
-        throw new Error("Insufficient token balance!");
-    }
-    
-    // For now, show that it would work
-    alert(`Ready to flip ${wager} tokens! (Program deployment needed for real transactions)`);
-    
-    // Simulate result for UI demonstration
-    const won = Math.random() < 0.49;
-    const payout = won ? wager * 1.96 : 0;
-    
-    // Simulate delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Update UI
-    await updateBalance();
-    await updateGameState();
-    
-    showResult(won, payout);
-    addToHistory(wager, won, payout);
 }
 
 
