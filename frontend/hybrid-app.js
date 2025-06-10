@@ -8,10 +8,10 @@ const flipHistory = [];
 
 // Multiple RPC endpoints with fallback
 const RPC_ENDPOINTS = [
-    "https://solana-api.projectserum.com",
-    "https://api.mainnet-beta.solana.com", 
-    "https://solana-mainnet.rpc.extrnode.com",
-    "https://mainnet.rpcpool.com"
+    "https://rpc.ankr.com/solana",
+    "https://solana-api.projectserum.com", 
+    "https://api.mainnet-beta.solana.com",
+    "https://solana.publicnode.com"
 ];
 
 let currentRpcIndex = 0;
