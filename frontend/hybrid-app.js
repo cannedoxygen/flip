@@ -14,7 +14,6 @@ const RPC_ENDPOINTS = [
     "https://mainnet.rpcpool.com"
 ];
 
-let connection;
 let currentRpcIndex = 0;
 
 // Try different RPCs if one fails
