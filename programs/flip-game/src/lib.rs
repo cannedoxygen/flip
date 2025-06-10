@@ -3,9 +3,6 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
 declare_id!("Fg7VmsCYRxb3zfJSpJwtCkb3dQaQv8qR4pR5m4g1Kjv");
 
-// The vault wallet address (your wallet)
-const VAULT_WALLET: &str = "7wkDoaFHXgmFjpKMSZZL7mg3c8bHLErSQ6QwhcDTXU8R";
-
 #[program]
 pub mod flip_game {
     use super::*;
@@ -14,12 +11,11 @@ pub mod flip_game {
         let game_state = &mut ctx.accounts.game_state;
         game_state.authority = ctx.accounts.authority.key();
         game_state.token_mint = ctx.accounts.token_mint.key();
-        game_state.vault_wallet = VAULT_WALLET.parse().unwrap();
         game_state.flip_count = 0;
         game_state.total_volume = 0;
         game_state.total_house_earnings = 0;
         
-        msg!("FlipGame initialized with vault: {}", VAULT_WALLET);
+        msg!("FlipGame initialized");
         Ok(())
     }
 
@@ -66,13 +62,17 @@ pub mod flip_game {
 
         if won {
             // Player wins - transfer payout from vault to player
-            let transfer_payout_ctx = CpiContext::new(
+            let seeds = &[b"vault".as_ref(), &[ctx.bumps.vault_authority]];
+            let signer = &[&seeds[..]];
+            
+            let transfer_payout_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.vault_token_account.to_account_info(),
                     to: ctx.accounts.player_token_account.to_account_info(),
                     authority: ctx.accounts.vault_authority.to_account_info(),
                 },
+                signer,
             );
             token::transfer(transfer_payout_ctx, potential_payout)?;
             
@@ -105,6 +105,30 @@ pub mod flip_game {
     // Get current vault balance (read-only)
     pub fn get_vault_balance(ctx: Context<GetVaultBalance>) -> Result<u64> {
         Ok(ctx.accounts.vault_token_account.amount)
+    }
+
+    // Withdraw tokens from vault (admin only)
+    pub fn withdraw_from_vault(ctx: Context<WithdrawFromVault>, amount: u64) -> Result<()> {
+        require!(amount > 0, FlipError::InvalidWager);
+        require!(ctx.accounts.vault_token_account.amount >= amount, FlipError::InsufficientVault);
+
+        let seeds = &[b"vault".as_ref(), &[ctx.bumps.vault_authority]];
+        let signer = &[&seeds[..]];
+        
+        let transfer_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.vault_token_account.to_account_info(),
+                to: ctx.accounts.destination_token_account.to_account_info(),
+                authority: ctx.accounts.vault_authority.to_account_info(),
+            },
+            signer,
+        );
+        
+        token::transfer(transfer_ctx, amount)?;
+        
+        msg!("Withdrawn {} tokens from vault", amount);
+        Ok(())
     }
 }
 
@@ -155,8 +179,11 @@ pub struct Flip<'info> {
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
     
-    /// CHECK: This is the vault wallet that owns the token account
-    #[account(constraint = vault_authority.key() == game_state.vault_wallet)]
+    /// CHECK: PDA authority for the vault
+    #[account(
+        seeds = [b"vault"],
+        bump
+    )]
     pub vault_authority: AccountInfo<'info>,
     
     pub token_program: Program<'info, Token>,
@@ -171,24 +198,57 @@ pub struct GetVaultBalance<'info> {
     pub game_state: Account<'info, GameState>,
     
     #[account(
-        constraint = vault_token_account.mint == game_state.token_mint,
-        constraint = vault_token_account.owner == game_state.vault_wallet
+        constraint = vault_token_account.mint == game_state.token_mint
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawFromVault<'info> {
+    #[account(
+        mut,
+        seeds = [b"game_state"],
+        bump,
+        constraint = game_state.authority == authority.key()
+    )]
+    pub game_state: Account<'info, GameState>,
+    
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    
+    #[account(
+        mut,
+        constraint = vault_token_account.mint == game_state.token_mint
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+    
+    /// CHECK: PDA authority for the vault
+    #[account(
+        seeds = [b"vault"],
+        bump
+    )]
+    pub vault_authority: AccountInfo<'info>,
+    
+    #[account(
+        mut,
+        constraint = destination_token_account.mint == game_state.token_mint
+    )]
+    pub destination_token_account: Account<'info, TokenAccount>,
+    
+    pub token_program: Program<'info, Token>,
 }
 
 #[account]
 pub struct GameState {
     pub authority: Pubkey,
     pub token_mint: Pubkey,
-    pub vault_wallet: Pubkey,
     pub flip_count: u64,
     pub total_volume: u64,
     pub total_house_earnings: u64,
 }
 
 impl GameState {
-    pub const LEN: usize = 32 + 32 + 32 + 8 + 8 + 8; // authority + token_mint + vault_wallet + flip_count + total_volume + total_house_earnings
+    pub const LEN: usize = 32 + 32 + 8 + 8 + 8; // authority + token_mint + flip_count + total_volume + total_house_earnings
 }
 
 #[event]

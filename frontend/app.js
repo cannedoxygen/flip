@@ -112,13 +112,9 @@ async function updateGameState() {
 
 async function getUserTokenAccount() {
     try {
-        const [tokenAccount] = await solanaWeb3.PublicKey.findProgramAddress(
-            [
-                wallet.publicKey.toBuffer(),
-                solanaWeb3.TOKEN_PROGRAM_ID.toBuffer(),
-                FLIP_MINT.toBuffer(),
-            ],
-            new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL") // Associated Token Program
+        const tokenAccount = await solanaWeb3.getAssociatedTokenAddress(
+            FLIP_MINT,
+            wallet.publicKey
         );
         
         // Check if account exists, if not we need to create it
@@ -154,14 +150,21 @@ async function executeFlip() {
         // Get user's token account
         const playerTokenAccount = await getUserTokenAccount();
         
+        // Get vault token account
+        const vaultTokenAccount = await solanaWeb3.getAssociatedTokenAddress(
+            FLIP_MINT,
+            vaultAuthorityPDA
+        );
+        
         // Execute flip transaction
         const tx = await program.methods
             .flip(wagerAmount)
             .accounts({
                 gameState: gameStatePDA,
-                gameVault: gameVaultPDA,
                 player: wallet.publicKey,
                 playerTokenAccount: playerTokenAccount,
+                vaultTokenAccount: vaultTokenAccount,
+                vaultAuthority: vaultAuthorityPDA,
                 tokenProgram: solanaWeb3.TOKEN_PROGRAM_ID,
             })
             .rpc();
@@ -171,12 +174,11 @@ async function executeFlip() {
         // Wait for confirmation and get transaction details
         await connection.confirmTransaction(tx, "confirmed");
         
-        // Update UI
-        await updateBalance();
-        await updateGameState();
-        
-        showResult(true, wager * 1.96); // Temporary - should get from event
-        addToHistory(wager, true, wager * 1.96); // Temporary - should get from event
+        // Update UI after a brief delay to ensure balance has been updated
+        setTimeout(async () => {
+            await updateBalance();
+            await updateGameState();
+        }, 1000);
         
     } catch (error) {
         console.error("Flip failed:", error);

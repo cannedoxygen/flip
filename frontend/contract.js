@@ -76,15 +76,17 @@ const IDL = {
 // FLIP token mint (real devnet token)
 const FLIP_MINT = new solanaWeb3.PublicKey("88KKUzT9B5sHRopVgRNn3VEfKh7g4ykLXqqjPT7Hpump");
 
-// The vault wallet (your wallet)
-const VAULT_WALLET = new solanaWeb3.PublicKey("7wkDoaFHXgmFjpKMSZZL7mg3c8bHLErSQ6QwhcDTXU8R");
-
-// Derive game state PDA
+// Derive PDAs
 const [gameStatePDA] = solanaWeb3.PublicKey.findProgramAddressSync(
   [new TextEncoder().encode("game_state")],
   PROGRAM_ID
 );
 
+const [vaultAuthorityPDA] = solanaWeb3.PublicKey.findProgramAddressSync(
+  [new TextEncoder().encode("vault")],
+  PROGRAM_ID
+);
+
 console.log("Program ID:", PROGRAM_ID.toString());
 console.log("Game State PDA:", gameStatePDA.toString());
-console.log("Vault Wallet:", VAULT_WALLET.toString());
+console.log("Vault Authority PDA:", vaultAuthorityPDA.toString());
