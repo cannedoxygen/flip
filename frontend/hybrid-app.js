@@ -320,9 +320,10 @@ async function executeRealFlip(wager) {
         console.log("🎲 Calling flip game smart contract...");
         console.log("💰 Wager:", wager, "tokens");
         
-        // Check if anchor is available
+        // Check if anchor is available, if not use manual transaction
         if (typeof anchor === 'undefined') {
-            throw new Error("Anchor library not loaded. Please refresh the page.");
+            console.log("⚠️ Anchor not available, using manual transaction");
+            return await executeFlipManual(wager, playerTokenAccount, vaultTokenAccount);
         }
         
         console.log("✅ Anchor available:", typeof anchor);
@@ -429,6 +430,70 @@ async function executeRealFlip(wager) {
         console.error("❌ Flip failed:", error);
         alert("Game failed: " + error.message);
     }
+}
+
+async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
+    console.log("🔧 Using manual transaction approach...");
+    
+    // Get token info
+    const playerTokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        wallet.publicKey,
+        { mint: FLIP_MINT }
+    );
+    const tokenInfo = playerTokenAccounts.value[0].account.data.parsed.info;
+    const decimals = tokenInfo.tokenAmount.decimals;
+    
+    // Convert wager to lamports
+    const wagerLamports = Math.floor(wager * Math.pow(10, decimals));
+    
+    // Build flip instruction manually
+    const instruction = new solanaWeb3.TransactionInstruction({
+        keys: [
+            { pubkey: gameStatePDA, isSigner: false, isWritable: true },
+            { pubkey: wallet.publicKey, isSigner: true, isWritable: true },
+            { pubkey: playerTokenAccount, isSigner: false, isWritable: true },
+            { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
+            { pubkey: vaultAuthorityPDA, isSigner: false, isWritable: false },
+            { pubkey: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), isSigner: false, isWritable: false },
+        ],
+        programId: PROGRAM_ID,
+        data: Buffer.concat([
+            Buffer.from([1]), // flip instruction discriminator
+            Buffer.from(wagerLamports.toString(16).padStart(16, '0'), 'hex').reverse() // u64 little endian
+        ])
+    });
+    
+    const transaction = new solanaWeb3.Transaction().add(instruction);
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = wallet.publicKey;
+    
+    console.log("📝 Signing manual transaction...");
+    const signed = await wallet.signTransaction(transaction);
+    const signature = await connection.sendRawTransaction(signed.serialize());
+    
+    console.log("⏳ Confirming manual transaction:", signature);
+    await connection.confirmTransaction(signature, "confirmed");
+    
+    console.log("✅ Manual flip transaction confirmed!");
+    
+    // Get outcome by checking balance changes
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const preBalance = parseFloat(document.getElementById("flip-balance").textContent);
+    await updateBalance();
+    const postBalance = parseFloat(document.getElementById("flip-balance").textContent);
+    
+    const won = postBalance > preBalance - wager;
+    const payout = won ? (postBalance - preBalance) + wager : 0;
+    
+    console.log("🎲 Manual game result:", won ? "WIN!" : "LOSE");
+    if (won) {
+        console.log("🎉 You won!", payout, "tokens");
+    }
+    
+    await updateGameState();
+    showResult(won, payout);
+    addToHistory(wager, won, payout);
 }
 
 
