@@ -1,7 +1,20 @@
+# Deploy Flip Game to Devnet - Step by Step
+
+## Step 1: Use Solana Playground
+
+1. **Go to [beta.solpg.io](https://beta.solpg.io/)**
+2. **Create New Project** → Select "Anchor" 
+3. **Set Network** → Top right corner, change to "Devnet"
+
+## Step 2: Replace the Code
+
+Replace the default `lib.rs` with your flip game code:
+
+```rust
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-declare_id!("CaF34a7uKZzVpBmmQMH2RLtq5Sj2sJSgLUnZcNRDt9P1");
+declare_id!("Fg7VmsCYRxb3zfJSpJwtCkb3dQaQv8qR4pR5m4g1Kjv");
 
 #[program]
 pub mod flip_game {
@@ -45,32 +58,20 @@ pub mod flip_game {
         );
         token::transfer(transfer_wager_ctx, wager)?;
 
-        // Generate pseudo-random result with multiple entropy sources
+        // Generate pseudo-random result
         let clock = Clock::get()?;
-        let slot = clock.slot;
-        let timestamp = clock.unix_timestamp as u64;
+        let random_seed = clock.unix_timestamp as u64;
         let player_key = ctx.accounts.player.key().to_bytes();
         let game_count = game_state.flip_count;
         
-        // Use multiple entropy sources for better randomness
         let hash_input = [
-            slot.to_le_bytes(),                              // Current slot (changes every ~400ms)
-            timestamp.to_le_bytes(),                         // Unix timestamp
-            player_key[0..8].try_into().unwrap(),           // Player key (first 8 bytes)
-            player_key[24..32].try_into().unwrap(),         // Player key (last 8 bytes)
-            game_count.to_le_bytes(),                       // Game counter
-            wager.to_le_bytes(),                            // Wager amount for extra entropy
+            random_seed.to_le_bytes(),
+            player_key[0..8].try_into().unwrap(),
+            game_count.to_le_bytes(),
         ].concat();
         
         let hash = solana_program::keccak::hash(&hash_input);
-        
-        // Use multiple bytes from hash and check if even number of 1s (more fair)
-        let result_bytes = &hash.to_bytes()[0..4];
-        let mut ones_count = 0;
-        for byte in result_bytes {
-            ones_count += byte.count_ones();
-        }
-        let won = ones_count % 2 == 0;
+        let won = hash.to_bytes()[0] % 2 == 0;
 
         if won {
             // Player wins - transfer payout from vault to player
@@ -281,3 +282,29 @@ pub enum FlipError {
     #[msg("Arithmetic overflow")]
     Overflow,
 }
+```
+
+## Step 3: Build and Deploy
+
+1. **Build** → Click the build button (⚡) 
+2. **Deploy** → Click deploy button 
+3. **Copy the new Program ID** → It will show you the deployed program ID
+
+## Step 4: Update Frontend
+
+Update `frontend/contract.js` with the new Program ID from Solana Playground.
+
+## Step 5: Create Devnet Test Token
+
+You'll need a test token on devnet. You can:
+1. Create one using `spl-token create-token` on devnet
+2. Or use an existing devnet test token
+
+## Step 6: Test Full Flow
+
+1. Get some test tokens
+2. Send tokens to vault
+3. Play the game 
+4. Verify automatic payouts work!
+
+Once this works on devnet, we can deploy to mainnet with confidence.
