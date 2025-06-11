@@ -578,8 +578,9 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     await updateBalance();
     const finalBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
     
-    // Store the initial balance before the transaction
-    const initialBalance = parseFloat(wagerInput.dataset.initialBalance || '0');
+    // Get the wager input element and stored initial balance
+    const wagerInputElement = document.getElementById("wager-input");
+    const initialBalance = parseFloat(wagerInputElement.dataset.initialBalance || '0');
     
     // Simple check: if final balance is higher than (initial - wager), you won
     // If you lost: final = initial - wager
