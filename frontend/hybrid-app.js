@@ -317,101 +317,110 @@ async function executeRealFlip(wager) {
         const vaultTokenAccount = new solanaWeb3.PublicKey("7Y6ayJPGJw9qdFYbr4TMDzyFvMGHfNEJqHFuBxtzfWQ2");
         console.log("Using known vault token account:", vaultTokenAccount.toString());
         
-        console.log("🎲 Starting real flip transaction...");
+        console.log("🎲 Calling flip game smart contract...");
         console.log("💰 Wager:", wager, "tokens");
-        console.log("👤 Player account:", playerTokenAccount.toString());
-        console.log("🏦 Vault account:", vaultTokenAccount.toString());
+        
+        // Create Anchor provider and program if not exists
+        if (!provider) {
+            provider = new anchor.AnchorProvider(
+                connection,
+                wallet,
+                anchor.AnchorProvider.defaultOptions()
+            );
+        }
+        if (!program) {
+            program = new anchor.Program(IDL, PROGRAM_ID, provider);
+        }
         
         // Get token info to determine decimals
         const tokenInfo = playerTokenAccounts.value[0].account.data.parsed.info;
         const decimals = tokenInfo.tokenAmount.decimals;
         
-        // Calculate amounts (convert to smallest units with proper decimals)
+        // Convert wager to lamports
         const wagerLamports = Math.floor(wager * Math.pow(10, decimals));
+        const wagerBN = new anchor.BN(wagerLamports);
         
-        console.log("🔢 Token decimals:", decimals);
-        console.log("🔢 Wager in lamports:", wagerLamports);
+        console.log("📝 Calling flip instruction on program...");
+        console.log("👤 Player:", wallet.publicKey.toString());
+        console.log("💰 Wager (lamports):", wagerLamports);
         
-        // Create SPL token transfer instruction using web3.js
-        // We'll use a simplified approach that should work with most wallets
-        const transaction = new solanaWeb3.Transaction();
-        
-        // For now, let's create a simple transaction that the wallet can handle
-        // This is a basic token transfer instruction
-        const keys = [
-            { pubkey: playerTokenAccount, isSigner: false, isWritable: true },    // Source
-            { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },     // Destination  
-            { pubkey: wallet.publicKey, isSigner: true, isWritable: false },      // Owner
-        ];
-        
-        // Create transfer instruction data (browser-compatible)
-        const data = new Uint8Array(9); // 1 byte instruction + 8 bytes amount
-        data[0] = 3; // Transfer instruction = 3
-        
-        // Convert amount to little-endian bytes
-        const amountBytes = new ArrayBuffer(8);
-        const amountView = new DataView(amountBytes);
-        amountView.setBigUint64(0, BigInt(wagerLamports), true); // little-endian = true
-        data.set(new Uint8Array(amountBytes), 1);
-        
-        const transferInstruction = new solanaWeb3.TransactionInstruction({
-            keys,
-            programId: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-            data,
-        });
-        
-        transaction.add(transferInstruction);
-        
-        // Get recent blockhash
-        const { blockhash } = await connection.getLatestBlockhash();
-        transaction.recentBlockhash = blockhash;
-        transaction.feePayer = wallet.publicKey;
-        
-        console.log("📝 Signing transaction...");
-        
-        // Sign and send transaction
-        const signedTransaction = await wallet.signTransaction(transaction);
-        const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-        
-        console.log("⏳ Confirming transaction:", signature);
-        
-        // Wait for confirmation
-        await connection.confirmTransaction(signature, "confirmed");
-        
-        console.log("✅ Wager transaction confirmed!");
-        
-        // Force balance refresh after transaction with delay
-        console.log("🔄 Refreshing balances...");
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds for blockchain to update
-        await updateBalance();
-        await updateGameState();
-        
-        // Step 2: Determine game outcome
-        const won = Math.random() < 0.49; // 49% win rate (2% house edge)
-        const netWager = wager * 0.98; // After 2% house cut
-        const payout = won ? netWager * 2 : 0;
-        
-        console.log("🎲 Game result:", won ? "WIN!" : "LOSE");
-        
-        if (won) {
-            console.log("🎉 You won!", payout, "tokens");
-            console.log("💡 Payout will be sent from vault (implement payout logic)");
-            // TODO: Implement automatic payout from vault
-            // This would require the vault wallet to send tokens back
+        try {
+            // Call the flip instruction - this handles everything!
+            const tx = await program.methods.flip(wagerBN)
+                .accounts({
+                    gameState: gameStatePDA,
+                    player: wallet.publicKey,
+                    playerTokenAccount: playerTokenAccount,
+                    vaultTokenAccount: vaultTokenAccount,
+                    vaultAuthority: vaultAuthorityPDA,
+                    tokenProgram: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+                })
+                .rpc();
+            
+            console.log("✅ Flip transaction confirmed:", tx);
+            
+            // Get transaction details to see if we won
+            const txDetails = await connection.getTransaction(tx, {
+                commitment: "confirmed",
+                maxSupportedTransactionVersion: 0
+            });
+            
+            // Parse logs to determine outcome
+            let won = false;
+            let payout = 0;
+            
+            if (txDetails && txDetails.meta && txDetails.meta.logMessages) {
+                const logs = txDetails.meta.logMessages;
+                console.log("📋 Transaction logs:", logs);
+                
+                // Look for win/loss in logs or events
+                // The smart contract emits a FlipResult event
+                for (const log of logs) {
+                    if (log.includes("won: true")) {
+                        won = true;
+                        // Extract payout from logs if possible
+                        const payoutMatch = log.match(/payout: (\d+)/);
+                        if (payoutMatch) {
+                            payout = parseInt(payoutMatch[1]) / Math.pow(10, decimals);
+                        }
+                    }
+                }
+            }
+            
+            // If we couldn't parse logs, check balance change
+            if (!won && !payout) {
+                const preBalance = currentBalance;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                await updateBalance();
+                const postBalance = parseFloat(document.getElementById("flip-balance").textContent);
+                
+                if (postBalance > preBalance - wager) {
+                    won = true;
+                    payout = (postBalance - preBalance) + wager;
+                }
+            }
+            
+            console.log("🎲 Game result:", won ? "WIN!" : "LOSE");
+            if (won) {
+                console.log("🎉 You won!", payout, "tokens (paid automatically by smart contract)");
+            }
+            
+            // Refresh balances
+            await updateBalance();
+            await updateGameState();
+            
+            showResult(won, payout);
+            addToHistory(wager, won, payout);
+            
+        } catch (error) {
+            console.error("❌ Flip transaction failed:", error);
+            // Still add to history even if failed
+            addToHistory(wager, false, 0);
+            throw error;
         }
-        
-        // Final balance refresh
-        await updateBalance();
-        await updateGameState();
-        
-        showResult(won, payout);
-        addToHistory(wager, won, payout);
-        
-        return signature;
-        
     } catch (error) {
-        console.error("❌ Flip transaction failed:", error);
-        throw error;
+        console.error("❌ Flip failed:", error);
+        alert("Game failed: " + error.message);
     }
 }
 
