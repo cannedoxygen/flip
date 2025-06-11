@@ -10,12 +10,12 @@ const flipHistory = [];
 const HELIUS_API_KEY = window.CONFIG?.HELIUS_API_KEY || "99b7e94e-9dff-4de3-82ac-567bfbda369c";
 const HELIUS_RPC = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
 
-// Multiple RPC endpoints with fallback
+// Multiple RPC endpoints with fallback (DEVNET)
 const RPC_ENDPOINTS = [
-    HELIUS_RPC,
-    "https://rpc.ankr.com/solana",
-    "https://solana-api.projectserum.com", 
-    "https://api.mainnet-beta.solana.com"
+    "https://api.devnet.solana.com",
+    "https://rpc-devnet.aws.metaplex.com",
+    "https://devnet.helius-rpc.com",
+    "https://api.devnet.solana.com"
 ];
 
 let currentRpcIndex = 0;
@@ -145,7 +145,21 @@ async function updateBalance() {
         
         console.log("🔍 Checking balance for wallet:", wallet.publicKey.toString());
         console.log("🪙 Looking for exact token:", FLIP_MINT.toString());
-        console.log("🪙 Token bytes check:", FLIP_MINT.toString() === "88KKUzT9B5sHRopVgRNn3VEfKh7g4ykLXqqjPT7Hpump");
+        console.log("🌐 Current RPC:", connection.rpcEndpoint);
+        
+        // First verify the mint exists
+        try {
+            const mintInfo = await connection.getAccountInfo(FLIP_MINT);
+            if (!mintInfo) {
+                console.error("❌ Token mint not found on this network!");
+                console.log("Make sure you're on DEVNET");
+                document.getElementById("flip-balance").textContent = "Wrong Network";
+                return;
+            }
+            console.log("✅ Token mint exists on network");
+        } catch (e) {
+            console.error("Failed to check mint:", e);
+        }
         
         // Direct token account lookup for our specific token
         const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
