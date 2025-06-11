@@ -211,20 +211,20 @@ async function updateGameState() {
         );
         console.log("🔍 Checking vault ATA:", vaultATA.toString());
         
-        // TEMPORARY: Check the known funded account
-        const fundedAccount = new solanaWeb3.PublicKey("7Y6ayJPGJw9qdFYbr4TMDzyFvMGHfNEJqHFuBxtzfWQ2");
+        // Check the correct vault token account
+        const correctVaultAccount = new solanaWeb3.PublicKey("4qChRBZt1Kubj6MMeP7WE9g6DuNS1AFyrMyjQm5Gmezn");
         try {
-            const fundedInfo = await connection.getParsedAccountInfo(fundedAccount);
-            if (fundedInfo.value && fundedInfo.value.data.parsed) {
-                const balance = fundedInfo.value.data.parsed.info.tokenAmount.uiAmount || 0;
-                console.log("✅ KNOWN VAULT ACCOUNT FOUND!");
+            const vaultInfo = await connection.getParsedAccountInfo(correctVaultAccount);
+            if (vaultInfo.value && vaultInfo.value.data.parsed) {
+                const balance = vaultInfo.value.data.parsed.info.tokenAmount.uiAmount || 0;
+                console.log("✅ CORRECT VAULT ACCOUNT FOUND!");
                 console.log("🏦 Vault Balance (POT):", balance);
-                console.log("📍 Account:", fundedAccount.toString());
+                console.log("📍 Account:", correctVaultAccount.toString());
                 document.getElementById("pot-size").textContent = balance.toLocaleString();
                 return;
             }
         } catch (e) {
-            console.log("Failed to check known account:", e);
+            console.log("Failed to check correct vault account:", e);
         }
         
         // Try to get the specific account
@@ -313,9 +313,9 @@ async function executeRealFlip(wager) {
             throw new Error("Insufficient token balance!");
         }
         
-        // Get vault token account - use the known funded account for now
-        const vaultTokenAccount = new solanaWeb3.PublicKey("7Y6ayJPGJw9qdFYbr4TMDzyFvMGHfNEJqHFuBxtzfWQ2");
-        console.log("Using known vault token account:", vaultTokenAccount.toString());
+        // Get vault token account - use the correct PDA-owned account
+        const vaultTokenAccount = new solanaWeb3.PublicKey("4qChRBZt1Kubj6MMeP7WE9g6DuNS1AFyrMyjQm5Gmezn");
+        console.log("Using correct vault token account:", vaultTokenAccount.toString());
         
         console.log("🎲 Calling flip game smart contract...");
         console.log("💰 Wager:", wager, "tokens");
