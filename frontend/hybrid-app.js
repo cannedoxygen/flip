@@ -320,6 +320,13 @@ async function executeRealFlip(wager) {
         console.log("🎲 Calling flip game smart contract...");
         console.log("💰 Wager:", wager, "tokens");
         
+        // Check if anchor is available
+        if (typeof anchor === 'undefined') {
+            throw new Error("Anchor library not loaded. Please refresh the page.");
+        }
+        
+        console.log("✅ Anchor available:", typeof anchor);
+        
         // Create Anchor provider and program if not exists
         if (!provider) {
             provider = new anchor.AnchorProvider(
