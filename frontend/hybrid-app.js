@@ -211,6 +211,22 @@ async function updateGameState() {
         );
         console.log("🔍 Checking vault ATA:", vaultATA.toString());
         
+        // TEMPORARY: Check the known funded account
+        const fundedAccount = new solanaWeb3.PublicKey("7Y6ayJPGJw9qdFYbr4TMDzyFvMGHfNEJqHFuBxtzfWQ2");
+        try {
+            const fundedInfo = await connection.getParsedAccountInfo(fundedAccount);
+            if (fundedInfo.value && fundedInfo.value.data.parsed) {
+                const balance = fundedInfo.value.data.parsed.info.tokenAmount.uiAmount || 0;
+                console.log("✅ KNOWN VAULT ACCOUNT FOUND!");
+                console.log("🏦 Vault Balance (POT):", balance);
+                console.log("📍 Account:", fundedAccount.toString());
+                document.getElementById("pot-size").textContent = balance.toLocaleString();
+                return;
+            }
+        } catch (e) {
+            console.log("Failed to check known account:", e);
+        }
+        
         // Try to get the specific account
         try {
             const vaultAccount = await connection.getParsedAccountInfo(vaultATA);
@@ -297,17 +313,9 @@ async function executeRealFlip(wager) {
             throw new Error("Insufficient token balance!");
         }
         
-        // Get vault token account
-        const vaultTokenAccounts = await connection.getParsedTokenAccountsByOwner(
-            vaultAuthorityPDA,
-            { mint: FLIP_MINT }
-        );
-        
-        if (vaultTokenAccounts.value.length === 0) {
-            throw new Error("Vault token account not found!");
-        }
-        
-        const vaultTokenAccount = vaultTokenAccounts.value[0].pubkey;
+        // Get vault token account - use the known funded account for now
+        const vaultTokenAccount = new solanaWeb3.PublicKey("7Y6ayJPGJw9qdFYbr4TMDzyFvMGHfNEJqHFuBxtzfWQ2");
+        console.log("Using known vault token account:", vaultTokenAccount.toString());
         
         console.log("🎲 Starting real flip transaction...");
         console.log("💰 Wager:", wager, "tokens");
