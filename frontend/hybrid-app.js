@@ -198,10 +198,17 @@ async function updateGameState() {
         
         // Get vault token account to check balance (pot size)
         // First try the associated token address
-        const vaultATA = await anchor.utils.token.associatedAddress({
-            mint: FLIP_MINT,
-            owner: vaultAuthorityPDA
-        });
+        const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+        const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+        
+        const [vaultATA] = await solanaWeb3.PublicKey.findProgramAddress(
+            [
+                vaultAuthorityPDA.toBuffer(),
+                TOKEN_PROGRAM_ID.toBuffer(),
+                FLIP_MINT.toBuffer(),
+            ],
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
         console.log("🔍 Checking vault ATA:", vaultATA.toString());
         
         // Try to get the specific account
