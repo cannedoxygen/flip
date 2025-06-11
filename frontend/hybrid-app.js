@@ -197,6 +197,29 @@ async function updateGameState() {
         console.log("🏦 Vault Authority PDA:", vaultAuthorityPDA.toString());
         
         // Get vault token account to check balance (pot size)
+        // First try the associated token address
+        const vaultATA = await anchor.utils.token.associatedAddress({
+            mint: FLIP_MINT,
+            owner: vaultAuthorityPDA
+        });
+        console.log("🔍 Checking vault ATA:", vaultATA.toString());
+        
+        // Try to get the specific account
+        try {
+            const vaultAccount = await connection.getParsedAccountInfo(vaultATA);
+            if (vaultAccount.value && vaultAccount.value.data.parsed) {
+                const vaultInfo = vaultAccount.value.data.parsed.info;
+                const vaultBalance = vaultInfo.tokenAmount.uiAmount || 0;
+                console.log("✅ VAULT ATA FOUND!");
+                console.log("🏦 Vault Balance (POT):", vaultBalance);
+                document.getElementById("pot-size").textContent = vaultBalance.toLocaleString();
+                return;
+            }
+        } catch (e) {
+            console.log("Failed to get vault ATA:", e);
+        }
+        
+        // Fallback to owner search
         const vaultTokenAccounts = await connection.getParsedTokenAccountsByOwner(
             vaultAuthorityPDA,
             { mint: FLIP_MINT }
