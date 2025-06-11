@@ -398,7 +398,9 @@ async function executeRealFlip(wager) {
             // If we couldn't parse logs, check balance change
             if (!won && !payout) {
                 const preBalance = currentBalance;
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Wait longer for blockchain to settle completely
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 await updateBalance();
                 const postBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
                 
@@ -406,16 +408,16 @@ async function executeRealFlip(wager) {
                 console.log("  Pre-game balance:", preBalance);
                 console.log("  Post-game balance:", postBalance);
                 console.log("  Wager:", wager);
-                console.log("  Expected if lost:", preBalance - wager);
+                console.log("  Balance change:", postBalance - preBalance);
                 
-                // You win if your balance is higher than what it would be if you just lost
-                const expectedLossBalance = preBalance - wager;
-                won = postBalance > expectedLossBalance + (wager * 0.5); // Buffer for house cut
-                payout = won ? postBalance - preBalance + wager : 0;
+                // Simple logic: if you have more than you started with minus the wager, you won
+                const balanceChange = postBalance - preBalance;
+                won = balanceChange > -wager + (wager * 0.8); // You won if you got back more than 80% of wager
+                payout = won ? balanceChange + wager : 0;
                 
                 console.log("🎲 Anchor result determination:");
+                console.log("  Balance change:", balanceChange);
                 console.log("  Won?", won);
-                console.log("  Actual balance change:", postBalance - preBalance);
                 console.log("  Calculated payout:", payout);
             }
             
@@ -508,27 +510,41 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     console.log("✅ Manual flip transaction confirmed!");
     
     // Get outcome by checking balance changes
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    const preBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
+    // Wait longer for blockchain to settle
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Force fresh balance check (don't rely on cached display)
     await updateBalance();
     const postBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
     
-    console.log("🔍 Balance check:");
-    console.log("  Pre-game balance:", preBalance);
-    console.log("  Post-game balance:", postBalance);
-    console.log("  Wager:", wager);
-    console.log("  Expected if lost:", preBalance - wager);
-    console.log("  Expected if won (approx):", preBalance + (wager * 0.96)); // Account for 2% house cut
+    // Calculate what we expect based on the transaction
+    const preBalance = postBalance + wager; // Work backwards from final balance
     
-    // You win if your balance is higher than what it would be if you just lost the wager
-    const expectedLossBalance = preBalance - wager;
-    const won = postBalance > expectedLossBalance + (wager * 0.5); // Give some buffer for house cut
-    const payout = won ? postBalance - preBalance + wager : 0;
+    console.log("🔍 Balance check:");
+    console.log("  Current balance:", postBalance);
+    console.log("  Wager:", wager);
+    
+    // Simple approach: look at the actual balance change from what we expect
+    // If we lost: should be roughly (starting balance - wager)
+    // If we won: should be roughly (starting balance + net winnings)
+    
+    // Get the balance change by checking against recent balance
+    // Wait and check again to be sure
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    await updateBalance();
+    const finalBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
+    
+    // If final balance increased from post-transaction, we definitely won
+    const balanceIncrease = finalBalance > postBalance;
+    const won = balanceIncrease;
+    const payout = won ? (finalBalance - postBalance) : 0;
     
     console.log("🎲 Result determination:");
+    console.log("  Post-tx balance:", postBalance);
+    console.log("  Final balance:", finalBalance);
+    console.log("  Balance increased?", balanceIncrease);
     console.log("  Won?", won);
-    console.log("  Actual balance change:", postBalance - preBalance);
-    console.log("  Calculated payout:", payout);
+    console.log("  Payout:", payout);
     
     console.log("🎲 Manual game result:", won ? "WIN!" : "LOSE");
     if (won) {
