@@ -72,8 +72,8 @@ pub mod flip_game {
             hash_value += (byte as u32) << (i * 8);
         }
         
-        // Player wins if hash_value % 100 < 48 (48% chance)
-        let win_threshold = 48;
+        // Player wins if hash_value % 100 < 50 (50% chance - true 50/50)
+        let win_threshold = 50;
         let won = (hash_value % 100) < win_threshold;
 
         if won {
