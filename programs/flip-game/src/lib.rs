@@ -64,13 +64,17 @@ pub mod flip_game {
         
         let hash = solana_program::keccak::hash(&hash_input);
         
-        // Use multiple bytes from hash and check if even number of 1s (more fair)
+        // 40% player win rate (60% house edge)
+        // Use first 4 bytes of hash to get a number 0-255 for each byte
         let result_bytes = &hash.to_bytes()[0..4];
-        let mut ones_count = 0;
-        for byte in result_bytes {
-            ones_count += byte.count_ones();
+        let mut hash_value = 0u32;
+        for (i, &byte) in result_bytes.iter().enumerate() {
+            hash_value += (byte as u32) << (i * 8);
         }
-        let won = ones_count % 2 == 0;
+        
+        // Player wins if hash_value % 100 < 40 (40% chance)
+        let win_threshold = 40;
+        let won = (hash_value % 100) < win_threshold;
 
         if won {
             // Player wins - transfer payout from vault to player
