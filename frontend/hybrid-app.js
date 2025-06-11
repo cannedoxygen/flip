@@ -278,6 +278,12 @@ async function executeFlip() {
         return;
     }
     
+    // Store the initial balance before the game
+    const currentBalanceText = document.getElementById("flip-balance").textContent.replace(/,/g, '');
+    const initialBalance = parseFloat(currentBalanceText) || 0;
+    wagerInput.dataset.initialBalance = initialBalance;
+    console.log("💰 Initial balance before flip:", initialBalance);
+    
     const flipBtn = document.getElementById("flip-btn");
     flipBtn.disabled = true;
     flipBtn.textContent = "Flipping...";
@@ -432,19 +438,23 @@ async function executeRealFlip(wager) {
                     console.log("  Wager:", wager);
                     console.log("  Balance change:", postBalance - preBalance);
                     
-                    // Simple logic: compare actual balance change to expected loss
-                    const balanceChange = postBalance - preBalance;
-                    console.log("  Expected loss:", -wager);
-                    console.log("  Actual change:", balanceChange);
+                    // Get the initial balance stored before the game
+                    const wagerInput = document.getElementById("wager-input");
+                    const initialBalance = parseFloat(wagerInput.dataset.initialBalance || preBalance);
                     
-                    // If balance change is better than losing the full wager, you won
-                    // (accounting for 2% house cut, so expect to get back ~98% of wager if you win)
-                    const expectedLoss = -wager;
-                    won = balanceChange > expectedLoss + (wager * 0.7); // You won if change is much better than full loss
-                    payout = won ? balanceChange + wager : 0;
+                    // Simple logic: if final balance > (initial - wager), you won
+                    const expectedIfLost = initialBalance - wager;
+                    won = postBalance > expectedIfLost + 10; // Small buffer for rounding
+                    
+                    const actualChange = postBalance - initialBalance;
+                    payout = won ? (actualChange + wager) : 0;
+                    
+                    console.log("  Initial balance:", initialBalance);
+                    console.log("  Expected if lost:", expectedIfLost);
+                    console.log("  Actual final balance:", postBalance);
+                    console.log("  Actual change:", actualChange);
                     
                     console.log("🎲 Anchor result determination:");
-                    console.log("  Balance change:", balanceChange);
                     console.log("  Won?", won);
                     console.log("  Calculated payout:", payout);
                 } catch (error) {
@@ -568,15 +578,18 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     await updateBalance();
     const finalBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
     
-    // Compare final balance to what we'd expect if we lost
-    // If we lost: finalBalance should be roughly (original - wager)  
-    // If we won: finalBalance should be higher due to payout
-    const startingBalance = finalBalance + wager; // Work backwards
-    const expectedIfLost = startingBalance - wager;
+    // Store the initial balance before the transaction
+    const initialBalance = parseFloat(wagerInput.dataset.initialBalance || '0');
     
-    // You won if final balance is significantly higher than just losing the wager
-    const won = finalBalance > expectedIfLost + (wager * 0.8); // Buffer for house cut
-    const payout = won ? (finalBalance - expectedIfLost) : 0;
+    // Simple check: if final balance is higher than (initial - wager), you won
+    // If you lost: final = initial - wager
+    // If you won: final = initial - wager + payout (approximately initial + net win)
+    const expectedIfLost = initialBalance - wager;
+    const won = finalBalance > expectedIfLost + 10; // Add small buffer for rounding
+    
+    // Calculate payout based on what actually happened
+    const actualChange = finalBalance - initialBalance;
+    const payout = won ? (actualChange + wager) : 0;
     
     console.log("🎲 Result determination:");
     console.log("  Post-tx balance:", postBalance);
