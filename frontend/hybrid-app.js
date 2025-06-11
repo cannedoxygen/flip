@@ -437,8 +437,11 @@ function updateHistoryDisplay() {
 }
 
 function updateDisplay() {
-    document.getElementById("flip-balance").textContent = "0";
-    document.getElementById("pot-size").textContent = "0";
+    // Don't reset if wallet is already connected
+    if (!wallet || !wallet.publicKey) {
+        document.getElementById("flip-balance").textContent = "0";
+        document.getElementById("pot-size").textContent = "0";
+    }
 }
 
 async function debugTokenAccounts() {
