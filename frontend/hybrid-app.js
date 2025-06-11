@@ -373,7 +373,7 @@ async function executeRealFlip(wager) {
                 maxSupportedTransactionVersion: 0
             });
             
-            // Parse logs to determine outcome
+            // Parse logs to determine outcome from smart contract events
             let won = false;
             let payout = 0;
             
@@ -381,17 +381,33 @@ async function executeRealFlip(wager) {
                 const logs = txDetails.meta.logMessages;
                 console.log("📋 Transaction logs:", logs);
                 
-                // Look for win/loss in logs or events
-                // The smart contract emits a FlipResult event
+                // Look for program logs that indicate win/loss
                 for (const log of logs) {
-                    if (log.includes("won: true")) {
-                        won = true;
-                        // Extract payout from logs if possible
-                        const payoutMatch = log.match(/payout: (\d+)/);
-                        if (payoutMatch) {
-                            payout = parseInt(payoutMatch[1]) / Math.pow(10, decimals);
+                    // Look for the FlipResult event data
+                    if (log.includes("Program data:") || log.includes("Program log:")) {
+                        console.log("Found program log:", log);
+                        
+                        // Check for win indicators in the logs
+                        if (log.toLowerCase().includes("win") || log.includes("payout")) {
+                            won = true;
+                            console.log("🎉 Found win indicator in logs!");
                         }
                     }
+                }
+                
+                // Also check for successful token transfers back to player (indicates win)
+                let transfersToPlayer = 0;
+                for (const log of logs) {
+                    if (log.includes("Transfer") && log.includes(wallet.publicKey.toString().slice(0, 8))) {
+                        transfersToPlayer++;
+                    }
+                }
+                
+                // If we see more than one transfer involving the player, they probably won
+                // (one transfer takes wager, second transfer gives payout)
+                if (transfersToPlayer > 1) {
+                    won = true;
+                    console.log("🎉 Multiple transfers detected - likely a win!");
                 }
             }
             
@@ -410,9 +426,15 @@ async function executeRealFlip(wager) {
                 console.log("  Wager:", wager);
                 console.log("  Balance change:", postBalance - preBalance);
                 
-                // Simple logic: if you have more than you started with minus the wager, you won
+                // Simple logic: compare actual balance change to expected loss
                 const balanceChange = postBalance - preBalance;
-                won = balanceChange > -wager + (wager * 0.8); // You won if you got back more than 80% of wager
+                console.log("  Expected loss:", -wager);
+                console.log("  Actual change:", balanceChange);
+                
+                // If balance change is better than losing the full wager, you won
+                // (accounting for 2% house cut, so expect to get back ~98% of wager if you win)
+                const expectedLoss = -wager;
+                won = balanceChange > expectedLoss + (wager * 0.7); // You won if change is much better than full loss
                 payout = won ? balanceChange + wager : 0;
                 
                 console.log("🎲 Anchor result determination:");
@@ -534,10 +556,15 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     await updateBalance();
     const finalBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
     
-    // If final balance increased from post-transaction, we definitely won
-    const balanceIncrease = finalBalance > postBalance;
-    const won = balanceIncrease;
-    const payout = won ? (finalBalance - postBalance) : 0;
+    // Compare final balance to what we'd expect if we lost
+    // If we lost: finalBalance should be roughly (original - wager)  
+    // If we won: finalBalance should be higher due to payout
+    const startingBalance = finalBalance + wager; // Work backwards
+    const expectedIfLost = startingBalance - wager;
+    
+    // You won if final balance is significantly higher than just losing the wager
+    const won = finalBalance > expectedIfLost + (wager * 0.8); // Buffer for house cut
+    const payout = won ? (finalBalance - expectedIfLost) : 0;
     
     console.log("🎲 Result determination:");
     console.log("  Post-tx balance:", postBalance);
