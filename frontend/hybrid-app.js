@@ -581,7 +581,7 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     console.log("🎲 Result determination:");
     console.log("  Post-tx balance:", postBalance);
     console.log("  Final balance:", finalBalance);
-    console.log("  Balance increased?", balanceIncrease);
+    console.log("  Balance change:", finalBalance - postBalance);
     console.log("  Won?", won);
     console.log("  Payout:", payout);
     
