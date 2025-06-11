@@ -400,12 +400,23 @@ async function executeRealFlip(wager) {
                 const preBalance = currentBalance;
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 await updateBalance();
-                const postBalance = parseFloat(document.getElementById("flip-balance").textContent);
+                const postBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
                 
-                if (postBalance > preBalance - wager) {
-                    won = true;
-                    payout = (postBalance - preBalance) + wager;
-                }
+                console.log("🔍 Anchor balance check:");
+                console.log("  Pre-game balance:", preBalance);
+                console.log("  Post-game balance:", postBalance);
+                console.log("  Wager:", wager);
+                console.log("  Expected if lost:", preBalance - wager);
+                
+                // You win if your balance is higher than what it would be if you just lost
+                const expectedLossBalance = preBalance - wager;
+                won = postBalance > expectedLossBalance + (wager * 0.5); // Buffer for house cut
+                payout = won ? postBalance - preBalance + wager : 0;
+                
+                console.log("🎲 Anchor result determination:");
+                console.log("  Won?", won);
+                console.log("  Actual balance change:", postBalance - preBalance);
+                console.log("  Calculated payout:", payout);
             }
             
             console.log("🎲 Game result:", won ? "WIN!" : "LOSE");
@@ -498,12 +509,26 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     
     // Get outcome by checking balance changes
     await new Promise(resolve => setTimeout(resolve, 2000));
-    const preBalance = parseFloat(document.getElementById("flip-balance").textContent);
+    const preBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
     await updateBalance();
-    const postBalance = parseFloat(document.getElementById("flip-balance").textContent);
+    const postBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
     
-    const won = postBalance > preBalance - wager;
-    const payout = won ? (postBalance - preBalance) + wager : 0;
+    console.log("🔍 Balance check:");
+    console.log("  Pre-game balance:", preBalance);
+    console.log("  Post-game balance:", postBalance);
+    console.log("  Wager:", wager);
+    console.log("  Expected if lost:", preBalance - wager);
+    console.log("  Expected if won (approx):", preBalance + (wager * 0.96)); // Account for 2% house cut
+    
+    // You win if your balance is higher than what it would be if you just lost the wager
+    const expectedLossBalance = preBalance - wager;
+    const won = postBalance > expectedLossBalance + (wager * 0.5); // Give some buffer for house cut
+    const payout = won ? postBalance - preBalance + wager : 0;
+    
+    console.log("🎲 Result determination:");
+    console.log("  Won?", won);
+    console.log("  Actual balance change:", postBalance - preBalance);
+    console.log("  Calculated payout:", payout);
     
     console.log("🎲 Manual game result:", won ? "WIN!" : "LOSE");
     if (won) {
