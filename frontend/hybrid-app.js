@@ -432,6 +432,15 @@ async function executeRealFlip(wager) {
     }
 }
 
+// Calculate Anchor instruction discriminator
+async function getDiscriminator(name) {
+    const preimage = `global:${name}`;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(preimage);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return new Uint8Array(hashBuffer).slice(0, 8);
+}
+
 async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     console.log("🔧 Using manual transaction approach...");
     
@@ -447,6 +456,19 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
     const wagerLamports = Math.floor(wager * Math.pow(10, decimals));
     
     // Build flip instruction manually
+    // Calculate correct Anchor discriminator for "flip"
+    const discriminator = await getDiscriminator("flip");
+    console.log("📋 Flip discriminator:", Array.from(discriminator));
+    
+    // Serialize u64 wager in little-endian format
+    const wagerBytes = new ArrayBuffer(8);
+    const wagerView = new DataView(wagerBytes);
+    wagerView.setBigUint64(0, BigInt(wagerLamports), true); // little-endian
+    
+    const data = new Uint8Array(16); // 8 bytes discriminator + 8 bytes wager
+    data.set(discriminator, 0);
+    data.set(new Uint8Array(wagerBytes), 8);
+    
     const instruction = new solanaWeb3.TransactionInstruction({
         keys: [
             { pubkey: gameStatePDA, isSigner: false, isWritable: true },
@@ -457,10 +479,7 @@ async function executeFlipManual(wager, playerTokenAccount, vaultTokenAccount) {
             { pubkey: new solanaWeb3.PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"), isSigner: false, isWritable: false },
         ],
         programId: PROGRAM_ID,
-        data: Buffer.concat([
-            Buffer.from([1]), // flip instruction discriminator
-            Buffer.from(wagerLamports.toString(16).padStart(16, '0'), 'hex').reverse() // u64 little endian
-        ])
+        data: data
     });
     
     const transaction = new solanaWeb3.Transaction().add(instruction);
