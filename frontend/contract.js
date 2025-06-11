@@ -74,7 +74,7 @@ const IDL = {
 };
 
 // TEST token mint (devnet test token)
-const FLIP_MINT = new solanaWeb3.PublicKey("BPfsR1jUCR2oVrtd2xDLoqb8bvkGWmNAE4rW7ffAA6Aj");
+const FLIP_MINT = new solanaWeb3.PublicKey("6iM7CJcaWNDEueWzAj3HDZqydH8NMc147Dw1pZPvcAw4");
 
 // Derive PDAs
 const [gameStatePDA] = solanaWeb3.PublicKey.findProgramAddressSync(
