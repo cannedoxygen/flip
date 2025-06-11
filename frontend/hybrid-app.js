@@ -368,10 +368,15 @@ async function executeRealFlip(wager) {
             console.log("✅ Flip transaction confirmed:", tx);
             
             // Get transaction details to see if we won
-            const txDetails = await connection.getTransaction(tx, {
-                commitment: "confirmed",
-                maxSupportedTransactionVersion: 0
-            });
+            let txDetails = null;
+            try {
+                txDetails = await connection.getTransaction(tx, {
+                    commitment: "confirmed",
+                    maxSupportedTransactionVersion: 0
+                });
+            } catch (e) {
+                console.log("Could not fetch transaction details:", e);
+            }
             
             // Parse logs to determine outcome from smart contract events
             let won = false;
@@ -413,34 +418,41 @@ async function executeRealFlip(wager) {
             
             // If we couldn't parse logs, check balance change
             if (!won && !payout) {
-                const preBalance = currentBalance;
-                
-                // Wait longer for blockchain to settle completely
-                await new Promise(resolve => setTimeout(resolve, 3000));
-                await updateBalance();
-                const postBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, ''));
-                
-                console.log("🔍 Anchor balance check:");
-                console.log("  Pre-game balance:", preBalance);
-                console.log("  Post-game balance:", postBalance);
-                console.log("  Wager:", wager);
-                console.log("  Balance change:", postBalance - preBalance);
-                
-                // Simple logic: compare actual balance change to expected loss
-                const balanceChange = postBalance - preBalance;
-                console.log("  Expected loss:", -wager);
-                console.log("  Actual change:", balanceChange);
-                
-                // If balance change is better than losing the full wager, you won
-                // (accounting for 2% house cut, so expect to get back ~98% of wager if you win)
-                const expectedLoss = -wager;
-                won = balanceChange > expectedLoss + (wager * 0.7); // You won if change is much better than full loss
-                payout = won ? balanceChange + wager : 0;
-                
-                console.log("🎲 Anchor result determination:");
-                console.log("  Balance change:", balanceChange);
-                console.log("  Won?", won);
-                console.log("  Calculated payout:", payout);
+                try {
+                    const preBalance = currentBalance;
+                    
+                    // Wait longer for blockchain to settle completely
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    await updateBalance();
+                    const postBalance = parseFloat(document.getElementById("flip-balance").textContent.replace(/,/g, '')) || 0;
+                    
+                    console.log("🔍 Anchor balance check:");
+                    console.log("  Pre-game balance:", preBalance);
+                    console.log("  Post-game balance:", postBalance);
+                    console.log("  Wager:", wager);
+                    console.log("  Balance change:", postBalance - preBalance);
+                    
+                    // Simple logic: compare actual balance change to expected loss
+                    const balanceChange = postBalance - preBalance;
+                    console.log("  Expected loss:", -wager);
+                    console.log("  Actual change:", balanceChange);
+                    
+                    // If balance change is better than losing the full wager, you won
+                    // (accounting for 2% house cut, so expect to get back ~98% of wager if you win)
+                    const expectedLoss = -wager;
+                    won = balanceChange > expectedLoss + (wager * 0.7); // You won if change is much better than full loss
+                    payout = won ? balanceChange + wager : 0;
+                    
+                    console.log("🎲 Anchor result determination:");
+                    console.log("  Balance change:", balanceChange);
+                    console.log("  Won?", won);
+                    console.log("  Calculated payout:", payout);
+                } catch (error) {
+                    console.error("Error in balance checking:", error);
+                    // Default to showing a loss if we can't determine outcome
+                    won = false;
+                    payout = 0;
+                }
             }
             
             console.log("🎲 Game result:", won ? "WIN!" : "LOSE");
